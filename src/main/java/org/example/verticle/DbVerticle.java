@@ -9,6 +9,7 @@ import io.vertx.ext.web.Router;
 import io.vertx.mysqlclient.MySQLConnectOptions;
 import io.vertx.mysqlclient.MySQLPool;
 import io.vertx.sqlclient.*;
+import org.example.api.src.Customer;
 
 import java.util.ArrayList;
 import java.util.List;

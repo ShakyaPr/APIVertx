@@ -1,4 +1,4 @@
-package org.example.verticle;
+package org.example.api.src;
 
 public class Customer {
     int id;
