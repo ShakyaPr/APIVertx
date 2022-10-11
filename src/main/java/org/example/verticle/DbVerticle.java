@@ -3,6 +3,7 @@ package org.example.verticle;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Future;
 import io.vertx.core.eventbus.EventBus;
+import io.vertx.core.eventbus.Message;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.Router;
@@ -80,69 +81,70 @@ public class DbVerticle extends AbstractVerticle {
         MySQLPool pool = pool(vertx,connectOptions, poolOptions);
         return pool;
     }
-
-    public void start() throws Exception {
-        System.out.println("hello from DB verticle");
-        conn = initDB();
-        /*
-        GET from DB
-         */
-        EventBus eveBus = vertx.eventBus();
-        eveBus.consumer("GET", message -> {
-            if (message.body() == "GET"){
-                this.findAll()
+    private <T> void all(Message<T> msg){
+           this.findAll()
                         .onSuccess(result ->{
                             System.out.println("Done!");
                             EventBus evBus = vertx.eventBus();
-                            evBus.send("GET.res", Json.encodePrettily(result));
+                            msg.reply(Json.encodePrettily(result));
                         })
-                        .onFailure(
-                                throwable -> eveBus.send("GET.res",throwable.getMessage())
-                        );
-            }
-        });
-        /*
-        INSERT DB
-         */
-        eveBus.consumer("POST",message -> {
-            var body = message.body();
-            JsonObject jsonBody = (JsonObject) body;
-            //String id = jsonBody.getString("CustomerID");
-           this.save(jsonBody)
-                   .onSuccess(result->{
-                       eveBus.send("POST.res",Json.encodePrettily(result));
-                   })
                    .onFailure(
-                           throwable -> eveBus.send("POST.res",throwable.getMessage())
+                           throwable -> msg.reply(throwable.getMessage())
                    );
-        });
-        /*
-        DELETE from DB
-         */
-        eveBus.consumer("DELETE",message->{
-            var body = message.body();
-            String id = (String) body;
-            this.deleteByID(id)
-                    .onSuccess(result->{
-                        eveBus.send("DELETE.res",Json.encodePrettily(result));
-                    })
-                    .onFailure(
-                            throwable -> eveBus.send("DELETE.res",throwable.getMessage())
-                    );
-        });
-        /*
-        UPDATE DB
-         */
-        eveBus.consumer("PUT",message -> {
-            var body = message.body();
-            JsonObject jsonBody = (JsonObject) body;
-            this.update(jsonBody)
-                    .onSuccess(result->{
-                        eveBus.send("PUT.res",Json.encodePrettily(result));
-                    })
-                    .onFailure(
-                            throwable -> eveBus.send("PUT.res",throwable.getMessage())
-                    );
-        });
+    }
+    private <T> void post(Message<T> msg){
+        var body = msg.body();
+        JsonObject jsonBody = (JsonObject) body;
+        this.save(jsonBody)
+                .onSuccess(result->{
+                    msg.reply(Json.encodePrettily(result));
+                })
+                .onFailure(
+                        throwable -> msg.reply(throwable.getMessage())
+                );
+    }
+    private <T> void delete(Message<T> msg){
+        var body = msg.body();
+        String id = (String) body;
+        this.deleteByID(id)
+                .onSuccess(result->{
+                    msg.reply(Json.encodePrettily(result));
+                })
+                .onFailure(
+                        throwable -> msg.reply(throwable.getMessage())
+                );
+    }
+    private <T> void put(Message<T> msg){
+        var body = msg.body();
+        JsonObject jsonBody = (JsonObject) body;
+        this.update(jsonBody)
+                .onSuccess(result->{
+                    msg.reply(Json.encodePrettily(result));
+                })
+                .onFailure(
+                        throwable -> msg.reply(throwable.getMessage())
+                );
+    }
+    public void start() throws Exception {
+        System.out.println("hello from DB verticle");
+        conn = initDB();
+
+        EventBus eveBus = vertx.eventBus();
+
+        // GET from DB
+
+        eveBus.consumer("GET",this::all);
+
+        // INSERT DB
+
+        eveBus.consumer("POST",this::post);
+
+        // DELETE from DB
+
+        eveBus.consumer("DELETE",this::delete);
+
+        // UPDATE DB
+
+        eveBus.consumer("PUT",this::put);
     }
 }

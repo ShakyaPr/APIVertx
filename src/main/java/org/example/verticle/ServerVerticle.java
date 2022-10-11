@@ -36,10 +36,10 @@ public class ServerVerticle extends AbstractVerticle {
      */
         router.get("/getAll").produces("application/json")
                 .handler(req ->{
-                    eventBus.send("GET","GET");
-                    eventBus.consumer("GET.res",res->{
-                        req.response()
-                                .end(Json.encodePrettily(res.body()));
+                    eventBus.request("GET","GET",reply->{
+                       if (reply.succeeded()){
+                           req.json(reply.result().body());
+                       }
                     });
                 });
     /*
@@ -49,16 +49,17 @@ public class ServerVerticle extends AbstractVerticle {
                 .handler(BodyHandler.create())
                 .handler(req->{
                     var body = req.getBodyAsJson();
-                    eventBus.send("POST",body);
-                    eventBus.consumer("POST.res",res->{
-                        if (res.body().toString().equals("1")){
-                            System.out.println("Updated");
-                            req.response().end("Successfully inserted new customer!");
-                        } else{
-                            req.response().end(Json.encodePrettily(res.body()));
+                    eventBus.request("POST",body,reply->{
+                        if (reply.succeeded()){
+                            if (reply.result().body().toString().equals("1")){
+                                req.response()
+                                        .end("Updated");
+                            } else{
+                                req.response()
+                                        .end(Json.encodePrettily(reply.result().body()));
+                            }
                         }
                     });
-                    //String id = body.getString("CustomerID");
                 });
         /*
         DELETE request
@@ -67,14 +68,16 @@ public class ServerVerticle extends AbstractVerticle {
                 .handler(req->{
                     var params = req.pathParams();
                     var id = params.get("id");
-                    eventBus.send("DELETE",id);
-                    eventBus.consumer("DELETE.res",res->{
-                        if (res.body().toString().equals("1")){
-                            req.response().end("Successfully deleted!");
-                        } else if(res.body().toString().equals("0")){
-                            req.response().end("No such ID");
-                        } else{
-                            req.response().end(Json.encodePrettily(res.body()));
+                    eventBus.request("DELETE",id,reply->{
+                        if (reply.succeeded()){
+                            if (reply.result().body().toString().equals("1")){
+                                req.response().end("Successfully deleted!");
+                            } else if(reply.result().body().toString().equals("0")){
+                                req.response()
+                                    .end("No such ID");
+                            } else {
+                                req.response().end(Json.encodePrettily(reply.result().body()));
+                            }
                         }
                     });
                 });
@@ -89,14 +92,13 @@ public class ServerVerticle extends AbstractVerticle {
                     var params = req.pathParams();
                     var id = params.get("id");
                     body.put("id",id);
-                    eventBus.send("PUT",body);
-                    eventBus.consumer("PUT.res",res->{
-                        if (res.body().toString().equals("1")){
+                    eventBus.request("PUT",body,reply-> {
+                        if (reply.result().body().toString().equals("1")){
                             req.response().end("Successfully updated!");
-                        } else if(res.body().toString().equals("0")){
+                        } else if(reply.result().body().toString().equals("0")){
                             req.response().end("No such ID in DB");
                         } else{
-                            req.response().end(Json.encodePrettily(res.body()));
+                            req.response().end(Json.encodePrettily(reply.result().body()));
                         }
                     });
                 });
