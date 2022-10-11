@@ -53,7 +53,7 @@ public class ServerVerticle extends AbstractVerticle {
                     eventBus.consumer("POST.res",res->{
                         if (res.body().toString().equals("1")){
                             System.out.println("Updated");
-                            req.response().end("Successfully updated!");
+                            req.response().end("Successfully inserted new customer!");
                         } else{
                             req.response().end(Json.encodePrettily(res.body()));
                         }
@@ -73,6 +73,28 @@ public class ServerVerticle extends AbstractVerticle {
                             req.response().end("Successfully deleted!");
                         } else if(res.body().toString().equals("0")){
                             req.response().end("No such ID");
+                        } else{
+                            req.response().end(Json.encodePrettily(res.body()));
+                        }
+                    });
+                });
+
+        /*
+        PUT request
+         */
+        router.put("/putEmp/:id")
+                .handler(BodyHandler.create())
+                .handler(req->{
+                    var body = req.getBodyAsJson();
+                    var params = req.pathParams();
+                    var id = params.get("id");
+                    body.put("id",id);
+                    eventBus.send("PUT",body);
+                    eventBus.consumer("PUT.res",res->{
+                        if (res.body().toString().equals("1")){
+                            req.response().end("Successfully updated!");
+                        } else if(res.body().toString().equals("0")){
+                            req.response().end("No such ID in DB");
                         } else{
                             req.response().end(Json.encodePrettily(res.body()));
                         }

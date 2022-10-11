@@ -53,10 +53,17 @@ public class DbVerticle extends AbstractVerticle {
     }
     public Future<Integer> deleteByID(String id){
         Objects.requireNonNull(id, "id cannot be NULL");
-//        String query = "DELETE FROM Sample.Customers WHERE id = #{id}";
 
         return conn.preparedQuery("DELETE FROM Sample.Customers WHERE CustomerID=?")
                 .execute(Tuple.of(id))
+                .map(SqlResult::rowCount);
+    }
+    public Future<Integer> update(JsonObject data){
+        List<Tuple> batch = new ArrayList<>();
+        batch.add(Tuple.of(data.getString("CustomerName"),data.getString("City"),data.getString("Country"), data.getString("id")));
+
+        return conn.preparedQuery("UPDATE Sample.Customers SET CustomerName=?, City=?, Country=? WHERE CustomerID=?;")
+                .executeBatch(batch)
                 .map(SqlResult::rowCount);
     }
 
@@ -95,7 +102,7 @@ public class DbVerticle extends AbstractVerticle {
             }
         });
         /*
-        UPDATE DB
+        INSERT DB
          */
         eveBus.consumer("POST",message -> {
             var body = message.body();
@@ -115,13 +122,26 @@ public class DbVerticle extends AbstractVerticle {
         eveBus.consumer("DELETE",message->{
             var body = message.body();
             String id = (String) body;
-            System.out.println(id);
             this.deleteByID(id)
                     .onSuccess(result->{
                         eveBus.send("DELETE.res",Json.encodePrettily(result));
                     })
                     .onFailure(
                             throwable -> eveBus.send("DELETE.res",throwable.getMessage())
+                    );
+        });
+        /*
+        UPDATE DB
+         */
+        eveBus.consumer("PUT",message -> {
+            var body = message.body();
+            JsonObject jsonBody = (JsonObject) body;
+            this.update(jsonBody)
+                    .onSuccess(result->{
+                        eveBus.send("PUT.res",Json.encodePrettily(result));
+                    })
+                    .onFailure(
+                            throwable -> eveBus.send("PUT.res",throwable.getMessage())
                     );
         });
     }
